@@ -1,0 +1,5 @@
+support/*.tar
+.go-oif
+.golangci-lint
+coverage/*
+*.out

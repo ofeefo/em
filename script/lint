@@ -1,0 +1,105 @@
+#!/bin/bash
+
+GIT_ROOT="$(git rev-parse --show-toplevel)"
+LINT_VERSION="v1.59.1"
+LINT_BIN="${OVERRIDE_LINT_BIN:-"$GIT_ROOT/.golangci-lint"}"
+GOIF_BIN="${OVERRIDE_GOIF_BIN:-"$GIT_ROOT/.go-oif"}"
+
+# Only change those together!
+GOIF_VERSION="v1.0.9"
+GOIF_HASH_DARWIN_AMD64="cb5ba823ee10e6bd2905dfb45976712795e6d4e3afc046d346f55173ded595b1"
+GOIF_HASH_LINUX_AMD64="9698c8a4f722976838ad19ac32c073151af480172650a1d1f453cdb6a7ffe13b"
+GOIF_HASH_DARWIN_ARM64="9a6a97686592935271cb5a45fef99da38e185dcf10e8ee6b697b70e6d34d1908"
+GOIF_HASH_LINUX_ARM64="33774beb37a5526575d7445d2f89a5f3b4efbd1173c6bdfa25f5551a620f4743"
+# /Only change those together!
+
+set -e
+
+if [ ! -f "$LINT_BIN" ]; then
+    echo "Downloading dependencies (golangci-lint)..."
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$GIT_ROOT" "$LINT_VERSION"
+    mv "$GIT_ROOT/golangci-lint" "$LINT_BIN"
+fi
+
+if [ -f "$GOIF_BIN" ]; then
+  # Ensure we have the right version
+  case "$(uname -m)" in
+  "x86_64")
+    ARCH="AMD64"
+    ;;
+  "aarch64" | "arm64")
+    ARCH="ARM64"
+    ;;
+  *)
+    echo "Unsupported architecture $(uname -m)"
+    exit 1
+    ;;
+  esac
+
+  case "$(uname -s)" in
+  "Darwin")
+    OS="DARWIN"
+    ;;
+  "Linux")
+    OS="LINUX"
+    ;;
+  *)
+    echo "Unsupported OS $(uname -s)"
+    exit 1
+    ;;
+  esac
+
+  current_sha="$(shasum -a256 "$GOIF_BIN" | awk '{ print $1 }')"
+  sha_variable="GOIF_HASH_${OS}_${ARCH}"
+  expected_sha="${!sha_variable}"
+
+  if [[ "$current_sha" != "$expected_sha" ]]; then
+    echo "Removed $GOIF_BIN, will re-download version $GOIF_VERSION"
+    rm "$GOIF_BIN"
+  fi
+fi
+
+if [ ! -f "$GOIF_BIN" ]; then
+    echo "Downloading dependencies (go-oif)..."
+    curl -sSfL https://raw.githubusercontent.com/heyvito/go-oif/main/install.sh | bash -s -- -b "$GIT_ROOT" "$GOIF_VERSION"
+    mv "$GIT_ROOT/go-oif" "$GOIF_BIN"
+fi
+
+
+TO_LINT=()
+while [ $# -gt 0 ]; do
+  TO_LINT+=("$1")
+  shift
+done
+
+
+if [[ ${#TO_LINT[*]} == 0 ]]; then
+  TO_LINT=($(find $(pwd) -type f -name "go.mod" -not -path 'example/*' -printf "%h\n"))
+fi
+
+for mod in "${TO_LINT[@]}"; do
+    echo "Working on '$(basename $mod)'"
+    pushd . > /dev/null || exit 1
+    cd "$mod"
+    echo "  Running formatter (go-oif)..."
+    "$GOIF_BIN" ./...
+    echo "  Running linter (golangci-lint)..."
+    "$LINT_BIN" run \
+        --exclude-dirs example/ \
+        -E gosec \
+        -E prealloc \
+        -E exportloopref \
+        -E misspell \
+        -E nestif \
+        -E goimports \
+        -E prealloc \
+        -E unconvert \
+        -E noctx \
+        -E gosimple \
+        -E govet \
+        -E ineffassign \
+        -E staticcheck \
+        -E unused \
+        -E asasalint
+    popd > /dev/null || exit 1
+done
