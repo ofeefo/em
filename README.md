@@ -1,7 +1,6 @@
 # Easy metrics (em)
 Shorthand for [OTEL](https://github.com/open-telemetry/opentelemetry-go) instrumentation initialization.
 <br>
-**Note:** This project is under development. Use at your own risk.
 ## Usage
 ### TL;DR
 #### [Simple usage](./example/simple_usage/main.go)
@@ -38,7 +37,7 @@ func main(){
 
     // Initialize your instruments.
     // There's also a MustInit function, which will panic if initialization fails.
-    i, err :=  em.Init[instruments]
+    i, err :=  em.Init[instruments]()
     if err != nil {
         //...
     }
