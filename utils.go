@@ -1,9 +1,10 @@
 package em
 
 import (
+	"time"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"time"
 )
 
 func Attrs(attrs ...attribute.KeyValue) metric.MeasurementOption {

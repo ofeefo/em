@@ -1,11 +1,13 @@
 package main
 
 import (
-	em "github.com/ofeefo/em"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/otel/attribute"
 	"net/http"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel/attribute"
+
+	em "github.com/ofeefo/em"
 )
 
 // Define your metrics
@@ -18,6 +20,7 @@ type samplers struct {
 	Histogram em.Histogram[float64] `id:"i_am_a_histogram" buckets:"1.0,2.0,3.0"`
 }
 
+// nolint: gosec
 func main() {
 	// Setup creates a basic OpenTelemetry configuration for easy initialization.
 	// For more advanced configurations (exporters, resources, etc.), use SetupWithMeter.
