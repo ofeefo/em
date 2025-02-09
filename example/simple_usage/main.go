@@ -1,23 +1,21 @@
 package main
 
 import (
-	"net/http"
-	"time"
-
+	em "github.com/ofeefo/em"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel/attribute"
-
-	"github.com/ofeefo/em"
+	"net/http"
+	"time"
 )
 
-// Define your instruments
+// Define your metrics
 type samplers struct {
-	Counter       em.I64Counter       `id:"i_am_a_counter"`
-	Gauge         em.I64Gauge         `id:"i_am_a_gauge"`
-	UpDownCounter em.F64UpDownCounter `id:"i_am_a_updowncounter"`
+	Counter       em.Counter[int64]         `id:"i_am_a_counter"`
+	Gauge         em.Gauge[int64]           `id:"i_am_a_gauge"`
+	UpDownCounter em.UpDownCounter[float64] `id:"i_am_a_updowncounter"`
 
 	// Histograms may have the 'buckets' tag to define explicit boundaries.
-	Histogram em.F64Histogram `id:"i_am_a_histogram" buckets:"1.0,2.0,3.0"`
+	Histogram em.Histogram[float64] `id:"i_am_a_histogram" buckets:"1.0,2.0,3.0"`
 }
 
 func main() {
