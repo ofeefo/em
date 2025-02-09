@@ -1,48 +1,56 @@
-package em
+package consistency
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/ofeefo/em"
+	ioprometheusclient "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/stretchr/testify/require"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
-
-	// nolint: goimports
-	"github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/expfmt"
-	"github.com/stretchr/testify/require"
 )
 
-type samplers struct {
-	Counter       I64Counter       `id:"i_am_a_counter"`
-	Gauge         I64Gauge         `id:"i_am_a_gauge"`
-	UpDownCounter F64UpDownCounter `id:"i_am_a_updowncounter"`
-	Histogram     F64Histogram     `id:"i_am_a_histogram" buckets:"1.0,2.0,3.0"`
-	Nested        nested           `attrs:"sub,nested,gotta,bar"`
+type metrics struct {
+	Counter       em.Counter[int64]         `id:"i_am_a_counter"`
+	Gauge         em.Gauge[int64]           `id:"i_am_a_gauge"`
+	UpDownCounter em.UpDownCounter[float64] `id:"i_am_a_updowncounter"`
+	Histogram     em.Histogram[float64]     `id:"i_am_a_histogram" buckets:"1.0,2.0,3.0"`
+	Nested        nested                    `attrs:"sub,nested,gotta,bar"`
 	*Embedded     `attrs:"sub,embedded,gotta,bar2"`
 }
 
 type nested struct {
-	Counter  F64Counter `id:"example_nested_counter"`
-	Gauge    F64Gauge   `id:"example_nested_gauge"`
+	Counter  em.Counter[float64] `id:"example_nested_counter"`
+	Gauge    em.Gauge[float64]   `id:"example_nested_gauge"`
 	MoreNest struct {
-		Counter F64Counter `id:"example_more_nested_counter"`
+		Counter em.Counter[float64] `id:"example_more_nested_counter"`
 	}
 }
+
 type Embedded struct {
-	Histogram     I64Histogram     `id:"example_embedded_histogram"`
-	UpDownCounter F64UpDownCounter `id:"example_embedded_updowncounter"`
+	Histogram     em.Histogram[int64]       `id:"example_embedded_histogram"`
+	UpDownCounter em.UpDownCounter[float64] `id:"example_embedded_updowncounter"`
 }
 
 // This test will leverage the project's complete_example.
 // All differentiation can be found there.
 func TestLabelConsistency(t *testing.T) {
-	// sample.txt is the raw payload of the complete_example /metrics endpoint.
-	data, err := os.ReadFile("fixtures/sample.txt")
+	wd, err := os.Getwd()
 	require.NoError(t, err)
 
-	ids := getAllIds(t, samplers{})
+	if filepath.Base(wd) != "consistency" {
+		wd = filepath.Join("consistency")
+	}
+	// sample.txt is the raw payload of the complete_example /metrics endpoint.
+	dataPath := filepath.Join(wd, "raw.txt")
+	data, err := os.ReadFile(dataPath)
+	require.NoError(t, err)
+
+	ids := getAllIds(t, metrics{})
 
 	p := &expfmt.TextParser{}
 	mfs, err := p.TextToMetricFamilies(bytes.NewBuffer(data))
@@ -54,22 +62,22 @@ func TestLabelConsistency(t *testing.T) {
 
 		// There are two different samplers on the complete_example, so we're
 		// expected to have two different metrics for each identifier.
-		metrics := mf.GetMetric()
-		require.Len(t, metrics, 2)
-		ensureLayersFound(t, metrics)
+		m := mf.GetMetric()
+		require.Len(t, m, 2)
+		ensureLayersFound(t, m)
 
 		if strings.HasPrefix(id, "example_nested") {
-			ensureNestedLabels(t, metrics)
+			ensureNestedLabels(t, m)
 		}
 
 		if strings.HasPrefix(id, "example_embedded") {
-			ensureEmbedded(t, metrics)
+			ensureEmbedded(t, m)
 		}
 	}
 }
 
 // Layers are the attribute differentiating the samplers on the complete_example.
-func ensureLayersFound(t *testing.T, metrics []*io_prometheus_client.Metric) {
+func ensureLayersFound(t *testing.T, metrics []*ioprometheusclient.Metric) {
 	found := map[string]bool{}
 	for _, m := range metrics {
 		for _, l := range m.GetLabel() {
@@ -87,7 +95,7 @@ func ensureLayersFound(t *testing.T, metrics []*io_prometheus_client.Metric) {
 	require.Len(t, found, 2)
 }
 
-func ensureNestedLabels(t *testing.T, metrics []*io_prometheus_client.Metric) {
+func ensureNestedLabels(t *testing.T, metrics []*ioprometheusclient.Metric) {
 	found := 0
 	for _, m := range metrics {
 		for _, l := range m.GetLabel() {
@@ -101,7 +109,7 @@ func ensureNestedLabels(t *testing.T, metrics []*io_prometheus_client.Metric) {
 	require.Equal(t, 2, found)
 }
 
-func ensureEmbedded(t *testing.T, metrics []*io_prometheus_client.Metric) {
+func ensureEmbedded(t *testing.T, metrics []*ioprometheusclient.Metric) {
 	found := 0
 	for _, m := range metrics {
 		for _, l := range m.GetLabel() {
