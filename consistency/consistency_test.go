@@ -3,15 +3,17 @@ package consistency
 import (
 	"bytes"
 	"fmt"
-	"github.com/ofeefo/em"
-	ioprometheusclient "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/expfmt"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	ioprometheusclient "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/stretchr/testify/require"
+
+	"github.com/ofeefo/em"
 )
 
 type metrics struct {

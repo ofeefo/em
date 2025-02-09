@@ -1,11 +1,13 @@
 package main
 
 import (
-	em "github.com/ofeefo/em"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/otel/attribute"
 	"net/http"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel/attribute"
+
+	em "github.com/ofeefo/em"
 )
 
 type metrics struct {
@@ -30,6 +32,7 @@ type Embedded struct {
 	UpDownCounter em.UpDownCounter[float64] `id:"example_embedded_updowncounter"`
 }
 
+// nolint: gosec
 func main() {
 	// Setup creates a basic OpenTelemetry configuration to get you started quickly.
 	// For more advanced configurations (e.g., exporters, resources), use SetupWithMeter.

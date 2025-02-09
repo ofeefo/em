@@ -2,9 +2,10 @@ package em
 
 import (
 	"context"
+	"reflect"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"reflect"
 )
 
 type Counter[T n64] interface {

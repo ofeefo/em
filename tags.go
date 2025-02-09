@@ -2,10 +2,11 @@ package em
 
 import (
 	"fmt"
-	"go.opentelemetry.io/otel/attribute"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (

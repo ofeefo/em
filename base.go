@@ -2,11 +2,12 @@ package em
 
 import (
 	"context"
+	"reflect"
+	"time"
+
 	"go.opentelemetry.io/otel/attribute"
 	_ "go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"reflect"
-	"time"
 )
 
 type timeTransform[T n64] func(start time.Time) T
