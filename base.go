@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-type timeTransform[T n64] func(start time.Time) T
+type timeSub[T n64] func(start time.Time) T
 
 type n64 interface {
 	int64 | float64

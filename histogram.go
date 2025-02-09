@@ -20,13 +20,13 @@ type Histogram[T n64] interface {
 	// that records the time elapsed since the starting point. The returned
 	// function may also receive record options to further support information
 	// that may vary along a given procedure.
-	Measure(transform timeTransform[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption)
+	Measure(sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption)
 
 	// MeasureCtx creates a starting point using time.Now and returns a function
 	// that records the time elapsed since the starting point. The returned
 	// function may also receive record options to further support information
 	// that may vary along a given procedure.
-	MeasureCtx(ctx context.Context, transform timeTransform[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption)
+	MeasureCtx(ctx context.Context, sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption)
 }
 
 type histogram[T n64] struct {
@@ -42,15 +42,15 @@ func (h *histogram[T]) RecordCtx(ctx context.Context, n T, opts ...metric.Record
 	h.baseRecord.Record(ctx, n, append(opts, metric.WithAttributes(h.attrs...))...)
 }
 
-func (h *histogram[T]) Measure(transform timeTransform[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption) {
-	return h.MeasureCtx(context.Background(), transform, opts...)
+func (h *histogram[T]) Measure(sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption) {
+	return h.MeasureCtx(context.Background(), sub, opts...)
 }
 
-func (h *histogram[T]) MeasureCtx(ctx context.Context, transform timeTransform[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption) {
-	now := time.Now()
+func (h *histogram[T]) MeasureCtx(ctx context.Context, sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption) {
+	start := time.Now()
 	baseOpts := opts
 	return func(opts ...metric.RecordOption) {
-		h.RecordCtx(ctx, transform(now), append(baseOpts, opts...)...)
+		h.RecordCtx(ctx, sub(start), append(baseOpts, opts...)...)
 	}
 }
 
