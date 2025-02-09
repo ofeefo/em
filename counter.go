@@ -8,6 +8,9 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+// Counter is a synchronous Instrument which supports non-negative increments.
+// Complete docs:
+// https://opentelemetry.io/docs/specs/otel/metrics/api/#counter
 type Counter[T n64] interface {
 	// Add records a change of n to the counter.
 	Add(n T, opts ...metric.AddOption)

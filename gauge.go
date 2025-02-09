@@ -8,6 +8,9 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+// Gauge is a synchronous Instrument which can be used to record non-additive
+// value(s).
+// Complete docs: https://opentelemetry.io/docs/specs/otel/metrics/api/#gauge
 type Gauge[T n64] interface {
 	// Record records the value of n to the gauge.
 	Record(n T, opts ...metric.RecordOption)
