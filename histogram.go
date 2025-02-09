@@ -9,6 +9,11 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+// Histogram is a synchronous Instrument which can be used to report arbitrary
+// values that are likely to be statistically meaningful. It is intended for
+// statistics such as histograms, summaries, and percentile.
+// Complete docs:
+// https://opentelemetry.io/docs/specs/otel/metrics/api/#histogram
 type Histogram[T n64] interface {
 	// Record adds a value to the distribution.
 	Record(n T, opts ...metric.RecordOption)

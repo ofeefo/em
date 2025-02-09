@@ -52,8 +52,8 @@ func main() {
 	go func() {
 		var i int64
 		j := func() float64 { return float64(i) }
-		done1 := s.Histogram.Measure(millis[float64], em.Attrs(attribute.String("your", "attr")))
-		done2 := s2.Histogram.Measure(millis[float64], em.Attrs(attribute.String("your", "attr")))
+		done1 := s.Histogram.Measure(em.Millis[float64], em.Attrs(attribute.String("your", "attr")))
+		done2 := s2.Histogram.Measure(em.Millis[float64], em.Attrs(attribute.String("your", "attr")))
 		for i = range 10 {
 			// Layer 1 instruments
 			s.Counter.Add(i, em.Attrs(attribute.String("your", "attr")))
@@ -93,8 +93,4 @@ func main() {
 	if err = http.ListenAndServe(":8080", promhttp.Handler()); err != nil {
 		panic(err)
 	}
-}
-
-func millis[T float64 | int64](start time.Time) T {
-	return T(time.Since(start).Milliseconds())
 }

@@ -10,8 +10,11 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+// timeSub are functions that returns the time elapsed since a given starting
+// point.
 type timeSub[T n64] func(start time.Time) T
 
+// n64 represents available types for creating metrics.
 type n64 interface {
 	int64 | float64
 }

@@ -8,6 +8,9 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+// UpDownCounter is a synchronous Instrument which supports increments and decrements.
+// Complete docs:
+// https://opentelemetry.io/docs/specs/otel/metrics/api/#updowncounter
 type UpDownCounter[T n64] interface {
 	// Add records a change of n to the counter.
 	Add(n T, opts ...metric.AddOption)
