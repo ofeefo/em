@@ -13,17 +13,24 @@ type provider struct {
 	m metric.Meter
 }
 
-var prov *provider = nil
+var p *provider = nil
+
+func MustSetup(name string, attrs ...attribute.KeyValue) {
+	if err := Setup(name, attrs...); err != nil {
+		panic(err)
+	}
+}
 
 func SetupWithMeter(meter metric.Meter) {
-	if meter == nil {
-		return
+	if p != nil {
+		p.m = meter
+	} else {
+		p = &provider{m: meter}
 	}
-	prov = &provider{m: meter}
 }
 
 func Setup(name string, attrs ...attribute.KeyValue) error {
-	if prov != nil {
+	if p != nil {
 		return nil
 	}
 
@@ -34,6 +41,6 @@ func Setup(name string, attrs ...attribute.KeyValue) error {
 
 	res := resource.NewWithAttributes(semconv.SchemaURL, attrs...)
 	exp := m2.NewMeterProvider(m2.WithReader(promEx), m2.WithResource(res))
-	prov = &provider{exp.Meter(name)}
+	p = &provider{m: exp.Meter(name)}
 	return nil
 }
