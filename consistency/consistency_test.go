@@ -12,6 +12,7 @@ import (
 	ioprometheusclient "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/metric/noop"
 
 	"github.com/ofeefo/em"
 )
@@ -44,8 +45,11 @@ func TestLabelConsistency(t *testing.T) {
 	// sample.txt is the raw payload of the complete_example /metrics endpoint.
 	data, err := os.ReadFile("./raw.txt")
 	require.NoError(t, err)
+	em.SetupWithMeter(noop.Meter{})
+	obj, err := em.Init[metrics]()
+	require.NoError(t, err)
 
-	ids := getAllIds(t, metrics{})
+	ids := getAllIds(t, obj)
 
 	p := &expfmt.TextParser{}
 	mfs, err := p.TextToMetricFamilies(bytes.NewBuffer(data))

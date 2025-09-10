@@ -16,6 +16,9 @@ func MustInit[T any](attrs ...attribute.KeyValue) *T {
 }
 
 func Init[T any](attrs ...attribute.KeyValue) (*T, error) {
+	if !p.ready {
+		return nil, fmt.Errorf("em.Init called before em.Setup")
+	}
 	base := new(T)
 	if err := initRef(base, attrs...); err != nil {
 		return nil, err
@@ -43,7 +46,12 @@ func initRef(base any, attrs ...attribute.KeyValue) error {
 			continue
 		}
 
-		fieldIface := fieldVal.Interface()
+		var fieldIface any
+		if fieldVal.Type().Kind() == reflect.Ptr {
+			fieldIface = reflect.New(fieldVal.Type().Elem()).Interface()
+		} else {
+			fieldIface = fieldVal.Addr().Interface()
+		}
 		builder, ok := fieldIface.(buildable)
 
 		switch {
@@ -51,7 +59,11 @@ func initRef(base any, attrs ...attribute.KeyValue) error {
 			if err := builder.init(field, attrs...); err != nil {
 				return err
 			}
-			fieldVal.Set(reflect.ValueOf(builder))
+			if fieldVal.Kind() == reflect.Ptr {
+				fieldVal.Set(reflect.ValueOf(builder))
+			} else {
+				fieldVal.Set(reflect.ValueOf(builder).Elem())
+			}
 
 		case fieldVal.Kind() == reflect.Struct:
 			if fieldVal.CanAddr() {
@@ -71,6 +83,7 @@ func initRef(base any, attrs ...attribute.KeyValue) error {
 			if err := initNested(field, n, fieldVal, attrs...); err != nil {
 				return err
 			}
+			fieldVal.Set(n)
 		}
 	}
 	return nil

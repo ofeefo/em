@@ -1,19 +1,26 @@
 package em
 
 import (
+	"sync"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
 	m2 "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 type provider struct {
-	m metric.Meter
+	m     metric.Meter
+	ready bool
+	mu    sync.Mutex
 }
 
-var p *provider = nil
+var p = &provider{
+	m: noop.Meter{},
+}
 
 func MustSetup(name string, attrs ...attribute.KeyValue) {
 	if err := Setup(name, attrs...); err != nil {
@@ -22,15 +29,18 @@ func MustSetup(name string, attrs ...attribute.KeyValue) {
 }
 
 func SetupWithMeter(meter metric.Meter) {
-	if p != nil {
-		p.m = meter
-	} else {
-		p = &provider{m: meter}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if meter == nil {
+		panic("nil meter provided to SetupWithMeter")
 	}
+	p = &provider{m: meter, ready: true}
 }
 
 func Setup(name string, attrs ...attribute.KeyValue) error {
-	if p != nil {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.ready {
 		return nil
 	}
 
@@ -41,6 +51,7 @@ func Setup(name string, attrs ...attribute.KeyValue) error {
 
 	res := resource.NewWithAttributes(semconv.SchemaURL, attrs...)
 	exp := m2.NewMeterProvider(m2.WithReader(promEx), m2.WithResource(res))
-	p = &provider{m: exp.Meter(name)}
+	p.m = exp.Meter(name)
+	p.ready = true
 	return nil
 }

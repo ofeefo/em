@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/noop"
 )
 
 type metrics struct {
@@ -24,6 +25,7 @@ type nested struct {
 		Counter Counter[float64] `id:"example_more_nested_counter"`
 	}
 }
+
 type Embedded struct {
 	Histogram     Histogram[int64]     `id:"example_embedded_histogram"`
 	UpDownCounter UpDownCounter[int64] `id:"example_embedded_updowncounter"`
@@ -50,6 +52,7 @@ func mustSetup(t *testing.T, attrs ...attribute.KeyValue) {
 func initAndCall(t *testing.T) func() {
 	t.Helper()
 	return func() {
+		SetupWithMeter(noop.Meter{})
 		var m *metrics
 		require.NotPanics(t, func() { m = MustInit[metrics]() })
 		require.NotPanics(t, func() {
