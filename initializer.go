@@ -3,26 +3,9 @@ package em
 import (
 	"fmt"
 	"reflect"
-	"sync"
 
 	"go.opentelemetry.io/otel/attribute"
 )
-
-var bmMu = &sync.Mutex{}
-
-var bmap = map[reflect.Type]func() buildable{
-	reflect.TypeFor[Gauge[int64]]():   newGauge[int64],
-	reflect.TypeFor[Gauge[float64]](): newGauge[float64],
-
-	reflect.TypeFor[Counter[int64]]():   newCounter[int64],
-	reflect.TypeFor[Counter[float64]](): newCounter[float64],
-
-	reflect.TypeFor[Histogram[int64]]():   newHistogram[int64],
-	reflect.TypeFor[Histogram[float64]](): newHistogram[float64],
-
-	reflect.TypeFor[UpDownCounter[int64]]():   newUpDownCounter[int64],
-	reflect.TypeFor[UpDownCounter[float64]](): newUpDownCounter[float64],
-}
 
 func MustInit[T any](attrs ...attribute.KeyValue) *T {
 	res, err := Init[T](attrs...)
@@ -59,25 +42,32 @@ func initRef(base any, attrs ...attribute.KeyValue) error {
 		if !field.IsExported() {
 			continue
 		}
-		bmMu.Lock()
-		fn, ok := bmap[field.Type]
-		bmMu.Unlock()
-		n := reflect.New(field.Type)
+
+		fieldIface := fieldVal.Interface()
+		builder, ok := fieldIface.(buildable)
+
 		switch {
 		case ok:
-			builder := fn()
 			if err := builder.init(field, attrs...); err != nil {
 				return err
 			}
 			fieldVal.Set(reflect.ValueOf(builder))
 
-		case n.Elem().Kind() == reflect.Struct:
-			if err := initNested(field, n, fieldVal, attrs...); err != nil {
-				return err
+		case fieldVal.Kind() == reflect.Struct:
+			if fieldVal.CanAddr() {
+				p := fieldVal.Addr()
+				if err := initNested(field, p, fieldVal, attrs...); err != nil {
+					return err
+				}
+			} else {
+				p := reflect.New(fieldVal.Type())
+				if err := initNested(field, p, fieldVal, attrs...); err != nil {
+					return err
+				}
 			}
 
-		case n.Elem().Kind() == reflect.Ptr:
-			n = reflect.New(field.Type.Elem())
+		case fieldVal.Kind() == reflect.Ptr:
+			n := reflect.New(field.Type.Elem())
 			if err := initNested(field, n, fieldVal, attrs...); err != nil {
 				return err
 			}

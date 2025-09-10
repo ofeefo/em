@@ -23,20 +23,18 @@ type buildable interface {
 	init(field reflect.StructField, attrs ...attribute.KeyValue) error
 }
 
-type baseRecord[T n64] interface {
-	Record(ctx context.Context, value T, opts ...metric.RecordOption)
+type RecordFn[T n64] func(ctx context.Context, value T, opts ...metric.RecordOption)
+
+type baseRecord[T n64] struct {
+	Record RecordFn[T]
 }
 
-type baseAdd[T n64] interface {
-	Add(ctx context.Context, n T, opts ...metric.AddOption)
+type baseAdd[T n64] struct {
+	Add AddTFn[T]
 }
+
+type AddTFn[T n64] func(context.Context, T, ...metric.AddOption)
 
 func useFloat[T any]() bool {
 	return reflect.TypeFor[T]().Kind() == reflect.Float64
 }
-
-type dummy[T n64] struct{}
-
-func (d dummy[T]) Record(ctx context.Context, value T, opts ...metric.RecordOption) {}
-
-func (d dummy[T]) Add(ctx context.Context, n T, opts ...metric.AddOption) {}

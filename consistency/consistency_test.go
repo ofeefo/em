@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -41,15 +41,8 @@ type Embedded struct {
 // This test will leverage the project's complete_example.
 // All differentiation can be found there.
 func TestLabelConsistency(t *testing.T) {
-	wd, err := os.Getwd()
-	require.NoError(t, err)
-
-	if filepath.Base(wd) != "consistency" {
-		wd = filepath.Join("consistency")
-	}
 	// sample.txt is the raw payload of the complete_example /metrics endpoint.
-	dataPath := filepath.Join(wd, "raw.txt")
-	data, err := os.ReadFile(dataPath)
+	data, err := os.ReadFile("./raw.txt")
 	require.NoError(t, err)
 
 	ids := getAllIds(t, metrics{})
@@ -136,6 +129,27 @@ func getAllIds(t *testing.T, bases ...any) []string {
 	return res
 }
 
+var genericTypeParameterStripper = regexp.MustCompile(`([^\[]+)\[`)
+
+func isInternalType(t reflect.Type) bool {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.PkgPath() != "github.com/ofeefo/em" {
+		return false
+	}
+	name := t.Name()
+	if !strings.ContainsRune(name, '[') {
+		return false
+	}
+	name = genericTypeParameterStripper.FindStringSubmatch(name)[1]
+	switch name {
+	case "Counter", "Gauge", "UpDownCounter", "Histogram":
+		return true
+	}
+	return false
+}
+
 func getAllIdsOf(t *testing.T, base any) map[string]struct{} {
 	bType := reflect.TypeOf(base)
 	bValue := reflect.ValueOf(base)
@@ -154,9 +168,15 @@ func getAllIdsOf(t *testing.T, base any) map[string]struct{} {
 		field := bType.Field(i)
 		fType := field.Type
 		if fType.Kind() == reflect.Struct || fType.Kind() == reflect.Pointer {
-			innerBase := bValue.Field(i)
-			if reflect.Indirect(innerBase).Kind() == reflect.Ptr {
+			var innerBase reflect.Value
+			if field.Type.Kind() == reflect.Ptr {
 				innerBase = reflect.New(field.Type.Elem())
+			} else {
+				innerBase = bValue.Field(i)
+			}
+
+			if isInternalType(fType) {
+				continue
 			}
 
 			innerIds := getAllIdsOf(t, innerBase.Interface())
@@ -167,7 +187,7 @@ func getAllIdsOf(t *testing.T, base any) map[string]struct{} {
 		}
 
 		id, ok := field.Tag.Lookup("id")
-		require.True(t, ok)
+		require.True(t, ok, "id tag not found on field %s: %s", field.Name, bType.Name())
 		// prometheus registers counters with a name prefixed with '_total'.
 		// UpDown counters for the test were registered with ids suffixed by
 		// '_updowncounters' so we can easily separate them here
