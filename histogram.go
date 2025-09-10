@@ -14,44 +14,37 @@ import (
 // statistics such as histograms, summaries, and percentile.
 // Complete docs:
 // https://opentelemetry.io/docs/specs/otel/metrics/api/#histogram
-type Histogram[T n64] interface {
-	// Record adds a value to the distribution.
-	Record(n T, opts ...metric.RecordOption)
-
-	// RecordCtx adds a value to the distribution.
-	RecordCtx(ctx context.Context, n T, opts ...metric.RecordOption)
-
-	// Measure creates a starting point using time.Now and returns a function
-	// that records the time elapsed since the starting point. The returned
-	// function may also receive record options to further support information
-	// that may vary along a given procedure.
-	Measure(sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption)
-
-	// MeasureCtx creates a starting point using time.Now and returns a function
-	// that records the time elapsed since the starting point. The returned
-	// function may also receive record options to further support information
-	// that may vary along a given procedure.
-	MeasureCtx(ctx context.Context, sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption)
-}
-
-type histogram[T n64] struct {
+type Histogram[T n64] struct {
 	attrs []attribute.KeyValue
 	baseRecord[T]
 }
 
-func (h *histogram[T]) Record(n T, opts ...metric.RecordOption) {
+// Record adds a value to the distribution.
+func (h *Histogram[T]) Record(n T, opts ...metric.RecordOption) {
 	h.RecordCtx(context.Background(), n, opts...)
 }
 
-func (h *histogram[T]) RecordCtx(ctx context.Context, n T, opts ...metric.RecordOption) {
+// RecordCtx adds a value to the distribution.
+func (h *Histogram[T]) RecordCtx(ctx context.Context, n T, opts ...metric.RecordOption) {
+	if h.baseRecord.Record == nil {
+		return
+	}
 	h.baseRecord.Record(ctx, n, append(opts, metric.WithAttributes(h.attrs...))...)
 }
 
-func (h *histogram[T]) Measure(sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption) {
+// Measure creates a starting point using time.Now and returns a function
+// that records the time elapsed since the starting point. The returned
+// function may also receive record options to further support information
+// that may vary along a given procedure.
+func (h *Histogram[T]) Measure(sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption) {
 	return h.MeasureCtx(context.Background(), sub, opts...)
 }
 
-func (h *histogram[T]) MeasureCtx(ctx context.Context, sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption) {
+// MeasureCtx creates a starting point using time.Now and returns a function
+// that records the time elapsed since the starting point. The returned
+// function may also receive record options to further support information
+// that may vary along a given procedure.
+func (h *Histogram[T]) MeasureCtx(ctx context.Context, sub timeSub[T], opts ...metric.RecordOption) func(opts ...metric.RecordOption) {
 	start := time.Now()
 	baseOpts := opts
 	return func(opts ...metric.RecordOption) {
@@ -59,22 +52,13 @@ func (h *histogram[T]) MeasureCtx(ctx context.Context, sub timeSub[T], opts ...m
 	}
 }
 
-func newHistogram[T n64]() buildable { return new(histogram[T]) }
-
-func (h *histogram[T]) init(field reflect.StructField, attrs ...attribute.KeyValue) error {
-	if p == nil {
-		h.baseRecord = dummy[T]{}
-		return nil
-	}
-
-	var (
-		base any
-		err  error
-	)
+func (h *Histogram[T]) init(field reflect.StructField, attrs ...attribute.KeyValue) error {
 	id, err := getID(field)
 	if err != nil {
 		return err
 	}
+
+	h.attrs = attrs
 
 	bounds, err := getBounds(field)
 	if err != nil {
@@ -82,16 +66,22 @@ func (h *histogram[T]) init(field reflect.StructField, attrs ...attribute.KeyVal
 	}
 
 	if useFloat[T]() {
-		base, err = p.m.Float64Histogram(id, metric.WithExplicitBucketBoundaries(bounds...))
+		base, err := p.m.Float64Histogram(id, metric.WithExplicitBucketBoundaries(bounds...))
+		if err != nil {
+			return err
+		}
+		h.baseRecord.Record = func(ctx context.Context, value T, opts ...metric.RecordOption) {
+			base.Record(ctx, float64(value), append(opts, metric.WithAttributes(h.attrs...))...)
+		}
 	} else {
-		base, err = p.m.Int64Histogram(id, metric.WithExplicitBucketBoundaries(bounds...))
+		base, err := p.m.Int64Histogram(id, metric.WithExplicitBucketBoundaries(bounds...))
+		if err != nil {
+			return err
+		}
+		h.baseRecord.Record = func(ctx context.Context, value T, opts ...metric.RecordOption) {
+			base.Record(ctx, int64(value), append(opts, metric.WithAttributes(h.attrs...))...)
+		}
 	}
 
-	if err != nil {
-		return err
-	}
-
-	h.baseRecord = base.(baseRecord[T])
-	h.attrs = attrs
 	return nil
 }
