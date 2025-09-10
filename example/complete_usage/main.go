@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel/attribute"
 
-	em "github.com/ofeefo/em"
+	"github.com/ofeefo/em"
 )
 
 type metrics struct {
