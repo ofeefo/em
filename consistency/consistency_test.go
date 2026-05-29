@@ -137,7 +137,7 @@ func getAllIds(t *testing.T, bases ...any) []string {
 var genericTypeParameterStripper = regexp.MustCompile(`([^\[]+)\[`)
 
 func isInternalType(t reflect.Type) bool {
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.PkgPath() != "github.com/ofeefo/em" {
@@ -159,7 +159,7 @@ func getAllIdsOf(t *testing.T, base any) map[string]struct{} {
 	bType := reflect.TypeOf(base)
 	bValue := reflect.ValueOf(base)
 	if bType.Kind() != reflect.Struct {
-		if bType.Kind() != reflect.Ptr {
+		if bType.Kind() != reflect.Pointer {
 			t.Fatalf("base is not a struct or a pointer")
 		}
 
@@ -174,7 +174,7 @@ func getAllIdsOf(t *testing.T, base any) map[string]struct{} {
 		fType := field.Type
 		if fType.Kind() == reflect.Struct || fType.Kind() == reflect.Pointer {
 			var innerBase reflect.Value
-			if field.Type.Kind() == reflect.Ptr {
+			if field.Type.Kind() == reflect.Pointer {
 				innerBase = reflect.New(field.Type.Elem())
 			} else {
 				innerBase = bValue.Field(i)
