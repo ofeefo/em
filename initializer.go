@@ -47,7 +47,7 @@ func initRef(base any, attrs ...attribute.KeyValue) error {
 		}
 
 		var fieldIface any
-		if fieldVal.Type().Kind() == reflect.Ptr {
+		if fieldVal.Type().Kind() == reflect.Pointer {
 			fieldIface = reflect.New(fieldVal.Type().Elem()).Interface()
 		} else {
 			fieldIface = fieldVal.Addr().Interface()
@@ -59,7 +59,7 @@ func initRef(base any, attrs ...attribute.KeyValue) error {
 			if err := builder.init(field, attrs...); err != nil {
 				return err
 			}
-			if fieldVal.Kind() == reflect.Ptr {
+			if fieldVal.Kind() == reflect.Pointer {
 				fieldVal.Set(reflect.ValueOf(builder))
 			} else {
 				fieldVal.Set(reflect.ValueOf(builder).Elem())
@@ -78,7 +78,7 @@ func initRef(base any, attrs ...attribute.KeyValue) error {
 				}
 			}
 
-		case fieldVal.Kind() == reflect.Ptr:
+		case fieldVal.Kind() == reflect.Pointer:
 			n := reflect.New(field.Type.Elem())
 			if err := initNested(field, n, fieldVal, attrs...); err != nil {
 				return err
@@ -99,7 +99,7 @@ func initNested(field reflect.StructField, newVal, fieldVal reflect.Value, attrs
 		return err
 	}
 
-	if fieldVal.Kind() == reflect.Ptr {
+	if fieldVal.Kind() == reflect.Pointer {
 		fieldVal.Set(newVal)
 	} else {
 		fieldVal.Set(newVal.Elem())
