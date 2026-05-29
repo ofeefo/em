@@ -11,6 +11,7 @@ import (
 
 	ioprometheusclient "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric/noop"
 
@@ -51,7 +52,7 @@ func TestLabelConsistency(t *testing.T) {
 
 	ids := getAllIds(t, obj)
 
-	p := &expfmt.TextParser{}
+	p := expfmt.NewTextParser(model.LegacyValidation)
 	mfs, err := p.TextToMetricFamilies(bytes.NewBuffer(data))
 	require.NoError(t, err)
 
